@@ -1,0 +1,5 @@
+.venv/
+conf.json
+cron.conf
+dynamic_url.json
+logs/
