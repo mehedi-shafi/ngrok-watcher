@@ -9,6 +9,7 @@ import ntpath
 import sys
 import requests
 from datetime import datetime
+from urllib.parse import urlparse
 
 with open('conf.json', 'r') as file:
     config = json.load(file)
@@ -74,21 +75,43 @@ def get_current_config():
     with open(file_path, 'r') as file:
         return json.load(file)
 
+
+def same_url(a, b):
+    a = urlparse(a)
+    b = urlparse(b)
+
+    logger.info(f'Current url: {a.netloc}')
+    logger.info(f'Incoming url: {b.netloc}')
+
+    return a.netloc == b.netloc
+
+
 def update_config():
     current_config = get_current_config()
 
     response = requests.get('http://localhost:4040/api/tunnels').json()
 
-    if current_config == {} or current_config['tunnels'][0]['public_url'] != response['tunnels'][0]['public_url']:
-        logger.info('Configuration file changed')
-
-        logger.info('Dumping latest configuration to file')
+    if current_config == {}:
         with open(config['config_file'], 'w+') as file:
             json.dump(response, file)
 
-        logger.info('Dumping latest configuration completed')
-        logger.info('Sending updated URL to telegram')
-        send_message(generate_dynamic_url_message(response['tunnels'][0]['public_url']))
+        current_config = get_current_config()
+
+    current_url = current_config['tunnels'][0]['public_url']
+    response_url = response['tunnels'][0]['public_url']
+
+    if same_url(current_url, response_url):
+        return
+
+    logger.info('Configuration file changed')
+
+    logger.info('Dumping latest configuration to file')
+    with open(config['config_file'], 'w+') as file:
+        json.dump(response, file)
+
+    logger.info('Dumping latest configuration completed')
+    logger.info('Sending updated URL to telegram')
+    send_message(generate_dynamic_url_message(response['tunnels'][0]['public_url']))
 
 
 if __name__ == '__main__':
